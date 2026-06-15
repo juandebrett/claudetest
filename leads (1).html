@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Juanito — Lead Tracker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f13; color: #e8e8f0; min-height: 100vh; }
+
+    header {
+      background: #1a1a24; border-bottom: 1px solid #2a2a3a;
+      padding: 16px 28px; display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 18px; }
+    .logo-badge {
+      background: linear-gradient(135deg, #7b5cff, #4f8dff); color: white;
+      padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700;
+      letter-spacing: 1px; text-transform: uppercase;
+    }
+    .nav-link {
+      background: #252535; border: 1px solid #35354a; border-radius: 8px;
+      padding: 8px 16px; color: #a0a0c0; font-size: 13px; font-weight: 600;
+      text-decoration: none; transition: background 0.15s;
+    }
+    .nav-link:hover { background: #2e2e42; color: #e8e8f0; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .stats-pill { background: #252535; border: 1px solid #35354a; border-radius: 20px; padding: 6px 14px; font-size: 13px; color: #a0a0c0; }
+    .stats-pill span { color: #7b5cff; font-weight: 700; }
+    .btn-add { background: linear-gradient(135deg, #7b5cff, #4f8dff); color: white; border: none; border-radius: 8px; padding: 9px 18px; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+    .btn-add:hover { opacity: 0.85; }
+
+    .toolbar { padding: 14px 28px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border-bottom: 1px solid #1e1e2a; }
+    .search-box { background: #1a1a24; border: 1px solid #2a2a3a; border-radius: 8px; padding: 8px 14px; color: #e8e8f0; font-size: 14px; width: 220px; outline: none; transition: border-color 0.15s; }
+    .search-box:focus { border-color: #7b5cff; }
+    .search-box::placeholder { color: #555570; }
+    .filter-select { background: #1a1a24; border: 1px solid #2a2a3a; border-radius: 8px; padding: 8px 12px; color: #e8e8f0; font-size: 14px; outline: none; cursor: pointer; }
+    .total-gp { margin-left: auto; font-size: 13px; color: #a0a0c0; }
+    .total-gp strong { color: #4caf82; font-size: 15px; }
+
+    .board { display: flex; gap: 16px; padding: 20px 28px 40px; overflow-x: auto; align-items: flex-start; }
+    .board::-webkit-scrollbar { height: 6px; }
+    .board::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 3px; }
+
+    .column { min-width: 272px; max-width: 272px; background: #15151f; border-radius: 12px; border: 1px solid #22223a; display: flex; flex-direction: column; }
+    .column-header { padding: 14px 16px; border-bottom: 1px solid #22223a; display: flex; align-items: center; gap: 8px; }
+    .col-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .col-title { font-weight: 600; font-size: 13px; flex: 1; }
+    .col-count { background: #22223a; border-radius: 10px; padding: 2px 8px; font-size: 11px; color: #8080a0; }
+    .col-gp { font-size: 11px; color: #4caf82; font-weight: 600; }
+    .cards-list { padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 80px; flex: 1; }
+    .cards-list.drag-over { background: #1e1e2e; border-radius: 8px; }
+
+    .card { background: #1e1e2c; border: 1px solid #28283c; border-radius: 10px; padding: 13px 14px; cursor: grab; transition: border-color 0.15s, box-shadow 0.15s; position: relative; }
+    .card:hover { border-color: #7b5cff55; box-shadow: 0 4px 16px #0006; }
+    .card.dragging { opacity: 0.4; cursor: grabbing; }
+
+    .card-company { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+    .card-contact { font-size: 12px; color: #8080a0; margin-bottom: 10px; }
+
+    .card-gp-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 6px; }
+    .card-gp { font-size: 15px; font-weight: 700; color: #4caf82; }
+    .card-gp-label { font-size: 10px; color: #606080; }
+    .card-volume { font-size: 11px; color: #606080; margin-bottom: 10px; }
+
+    .card-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; }
+    .tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.4px; }
+
+    .card-prob-bar { height: 3px; background: #28283c; border-radius: 2px; margin-bottom: 8px; overflow: hidden; }
+    .card-prob-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+
+    .card-next-action { font-size: 11px; color: #7070a0; border-top: 1px solid #28283c; padding-top: 8px; margin-top: 4px; }
+    .card-next-action strong { color: #a0a0c8; }
+
+    .card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+    .card-prob-text { font-size: 10px; color: #7070a0; }
+    .card-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s; }
+    .card:hover .card-actions { opacity: 1; }
+    .btn-icon { background: #252538; border: none; border-radius: 5px; width: 24px; height: 24px; cursor: pointer; color: #7070a0; font-size: 12px; display: flex; align-items: center; justify-content: center; transition: background 0.1s, color 0.1s; }
+    .btn-icon:hover { background: #7b5cff; color: white; }
+    .btn-icon.del:hover { background: #ff4f6a; color: white; }
+
+    .modal-backdrop { display: none; position: fixed; inset: 0; background: #0009; z-index: 200; align-items: center; justify-content: center; }
+    .modal-backdrop.open { display: flex; }
+    .modal { background: #1a1a26; border: 1px solid #2e2e48; border-radius: 16px; width: 520px; max-width: 95vw; max-height: 92vh; overflow-y: auto; padding: 28px; animation: pop 0.18s ease; }
+    @keyframes pop { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+    .modal h2 { font-size: 18px; margin-bottom: 20px; }
+    .form-row { margin-bottom: 14px; }
+    .form-row label { display: block; font-size: 11px; font-weight: 600; color: #8080a0; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-row input, .form-row select, .form-row textarea {
+      width: 100%; background: #12121c; border: 1px solid #2a2a3e; border-radius: 8px;
+      padding: 10px 12px; color: #e8e8f0; font-size: 14px; outline: none; font-family: inherit; transition: border-color 0.15s;
+    }
+    .form-row input:focus, .form-row select:focus, .form-row textarea:focus { border-color: #7b5cff; }
+    .form-row textarea { min-height: 70px; resize: vertical; }
+    .form-row select option { background: #1a1a26; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .gp-preview { background: #0d1f18; border: 1px solid #1a4030; border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; display: none; }
+    .gp-preview.show { display: block; }
+    .gp-preview-label { font-size: 11px; color: #4caf82; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .gp-preview-value { font-size: 22px; font-weight: 700; color: #4caf82; }
+    .gp-preview-note { font-size: 11px; color: #3a7a58; margin-top: 3px; }
+
+    .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+    .btn-cancel { background: #252535; border: 1px solid #35354a; border-radius: 8px; padding: 9px 18px; color: #a0a0c0; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .btn-cancel:hover { background: #2e2e42; }
+    .btn-save { background: linear-gradient(135deg, #7b5cff, #4f8dff); border: none; border-radius: 8px; padding: 9px 20px; color: white; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+    .btn-save:hover { opacity: 0.85; }
+
+    .pri-high   { background: #ff4f6a22; color: #ff7088; }
+    .pri-medium { background: #ff9f4a22; color: #ffb86c; }
+    .pri-low    { background: #4caf8222; color: #6ecfa0; }
+
+    .prod-cards     { background: #7b5cff22; color: #9b8cff; }
+    .prod-acquiring { background: #4f8dff22; color: #7fb0ff; }
+    .prod-fxspot    { background: #00c4ff22; color: #40d8ff; }
+    .prod-fxforward { background: #ff9f4a22; color: #ffb86c; }
+
+    .empty { text-align: center; padding: 28px 12px; color: #404060; font-size: 12px; }
+    .empty-icon { font-size: 26px; margin-bottom: 6px; }
+
+    .column[data-stage="closed-won"]  { border-color: #4caf8233; }
+    .column[data-stage="closed-lost"] { border-color: #ff4f6a33; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-badge">Revolut</span>
+    Lead Tracker
+  </div>
+  <div class="header-right">
+    <a href="analytics.html" class="nav-link">&#9700; Analytics</a>
+    <div class="stats-pill">Open: <span id="stat-open">0</span> &nbsp;·&nbsp; Won: <span id="stat-won">0</span></div>
+    <button class="btn-add" onclick="openModal()">+ Add Lead</button>
+  </div>
+</header>
+
+<div class="toolbar">
+  <input class="search-box" type="text" id="search" placeholder="Search company or contact…" oninput="render()">
+  <select class="filter-select" id="filter-product" onchange="render()">
+    <option value="">All products</option>
+    <option value="Cards">Cards</option>
+    <option value="Acquiring">Acquiring</option>
+    <option value="FX Spot">FX Spot</option>
+    <option value="FX Forward">FX Forward</option>
+  </select>
+  <select class="filter-select" id="filter-priority" onchange="render()">
+    <option value="">All priorities</option>
+    <option value="high">High</option>
+    <option value="medium">Medium</option>
+    <option value="low">Low</option>
+  </select>
+  <div class="total-gp">Weighted GP: <strong id="total-gp">€0</strong></div>
+</div>
+
+<div class="board" id="board"></div>
+
+<!-- Modal -->
+<div class="modal-backdrop" id="modal-backdrop" onclick="backdropClick(event)">
+  <div class="modal">
+    <h2 id="modal-title">New Lead</h2>
+
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Company *</label>
+        <input id="f-company" type="text" placeholder="Acme Corp">
+      </div>
+      <div class="form-row">
+        <label>Contact name</label>
+        <input id="f-contact" type="text" placeholder="Jane Smith">
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Email</label>
+        <input id="f-email" type="email" placeholder="jane@acme.com">
+      </div>
+      <div class="form-row">
+        <label>Phone</label>
+        <input id="f-phone" type="text" placeholder="+44 7…">
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Product</label>
+        <select id="f-product" onchange="updateVolumeLabel(); calcGP();">
+          <option value="Cards">Cards (1.2% monthly)</option>
+          <option value="Acquiring">Acquiring (0.4% monthly)</option>
+          <option value="FX Spot">FX Spot (0.6% · 3-month window)</option>
+          <option value="FX Forward">FX Forward (0.8% · half-year)</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label id="volume-label">Monthly Volume (€)</label>
+        <input id="f-volume" type="number" placeholder="0" oninput="calcGP()">
+      </div>
+    </div>
+
+    <div class="gp-preview" id="gp-preview">
+      <div class="gp-preview-label">Estimated GP</div>
+      <div class="gp-preview-value" id="gp-preview-value">€0</div>
+      <div class="gp-preview-note" id="gp-preview-note"></div>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Stage</label>
+        <select id="f-stage"></select>
+      </div>
+      <div class="form-row">
+        <label>Probability of closing</label>
+        <select id="f-prob">
+          <option value="10">10%</option>
+          <option value="20">20%</option>
+          <option value="30" selected>30%</option>
+          <option value="40">40%</option>
+          <option value="50">50%</option>
+          <option value="60">60%</option>
+          <option value="70">70%</option>
+          <option value="80">80%</option>
+          <option value="90">90%</option>
+          <option value="100">100%</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Priority</label>
+        <select id="f-priority">
+          <option value="high">High</option>
+          <option value="medium" selected>Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Next action</label>
+        <input id="f-next" type="text" placeholder="e.g. Follow up Thursday">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>Notes</label>
+      <textarea id="f-notes" placeholder="Any relevant context…"></textarea>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveLead()">Save lead</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STAGES = [
+  { id: 'qualified',    label: 'Qualified',     color: '#00c4ff' },
+  { id: 'demo',         label: 'Demo / Meeting', color: '#ff9f4a' },
+  { id: 'negotiation',  label: 'Negotiation',   color: '#ff7b4a' },
+  { id: 'closed-won',   label: 'Closed Won',    color: '#4caf82' },
+  { id: 'closed-lost',  label: 'Closed Lost',   color: '#ff4f6a' },
+];
+
+const PRODUCTS = {
+  'Cards':       { rate: 0.012, basis: 'monthly',  note: '1.2% of monthly volume' },
+  'Acquiring':   { rate: 0.004, basis: 'monthly',  note: '0.4% of monthly volume' },
+  'FX Spot':     { rate: 0.006, basis: 'annual',   note: '0.6% of annual volume × 3 months' },
+  'FX Forward':  { rate: 0.008, basis: 'annual',   note: '0.8% of annual volume × 6 months' },
+};
+
+function computeGP(product, volume) {
+  const v = Number(volume) || 0;
+  if (!v || !PRODUCTS[product]) return 0;
+  const p = PRODUCTS[product];
+  if (p.basis === 'monthly') return v * p.rate;
+  if (product === 'FX Spot')    return v * p.rate * (3/12);
+  if (product === 'FX Forward') return v * p.rate * (6/12);
+  return 0;
+}
+
+let leads = JSON.parse(localStorage.getItem('revolut-leads-v2') || '[]');
+let editingId = null;
+let dragId = null;
+
+function save() { localStorage.setItem('revolut-leads-v2', JSON.stringify(leads)); }
+
+function fmt(v) {
+  if (!v && v !== 0) return '€0';
+  return '€' + Number(v).toLocaleString('en-IE', { maximumFractionDigits: 0 });
+}
+
+function probColor(p) {
+  if (p <= 30) return '#ff4f6a';
+  if (p <= 60) return '#ff9f4a';
+  return '#4caf82';
+}
+
+function daysSince(ts) {
+  const d = Math.floor((Date.now() - ts) / 86400000);
+  if (d === 0) return 'today';
+  if (d === 1) return '1d ago';
+  return d + 'd ago';
+}
+
+function prodClass(p) {
+  return { 'Cards': 'prod-cards', 'Acquiring': 'prod-acquiring', 'FX Spot': 'prod-fxspot', 'FX Forward': 'prod-fxforward' }[p] || '';
+}
+
+/* ── Board ── */
+function render() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const fp = document.getElementById('filter-product').value;
+  const fpr = document.getElementById('filter-priority').value;
+
+  const filtered = leads.filter(l => {
+    if (q && !l.company.toLowerCase().includes(q) && !(l.contact||'').toLowerCase().includes(q)) return false;
+    if (fp && l.product !== fp) return false;
+    if (fpr && l.priority !== fpr) return false;
+    return true;
+  });
+
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+
+  let totalOpen = 0, totalWon = 0, weightedGP = 0;
+
+  STAGES.forEach(stage => {
+    const cards = filtered.filter(l => l.stage === stage.id);
+    const stageGP = cards.reduce((s, l) => s + computeGP(l.product, l.volume), 0);
+
+    cards.forEach(l => {
+      const gp = computeGP(l.product, l.volume);
+      if (l.stage === 'closed-won') { totalWon++; weightedGP += gp; }
+      else if (l.stage !== 'closed-lost') { totalOpen++; weightedGP += gp * (Number(l.prob) / 100); }
+    });
+
+    const col = document.createElement('div');
+    col.className = 'column';
+    col.dataset.stage = stage.id;
+    col.innerHTML = `
+      <div class="column-header">
+        <div class="col-dot" style="background:${stage.color}"></div>
+        <div class="col-title">${stage.label}</div>
+        <div class="col-count">${cards.length}</div>
+        ${stageGP ? `<div class="col-gp">${fmt(stageGP)}</div>` : ''}
+      </div>
+      <div class="cards-list" data-stage="${stage.id}">
+        ${cards.length === 0 ? '<div class="empty"><div class="empty-icon">&#9675;</div>No leads</div>' : ''}
+        ${cards.map(cardHTML).join('')}
+      </div>`;
+    board.appendChild(col);
+  });
+
+  document.getElementById('stat-open').textContent = totalOpen;
+  document.getElementById('stat-won').textContent = totalWon;
+  document.getElementById('total-gp').textContent = fmt(weightedGP);
+
+  board.querySelectorAll('.card').forEach(el => {
+    el.addEventListener('dragstart', () => { dragId = el.dataset.id; setTimeout(() => el.classList.add('dragging'), 0); });
+    el.addEventListener('dragend', () => { el.classList.remove('dragging'); board.querySelectorAll('.cards-list').forEach(l => l.classList.remove('drag-over')); });
+  });
+  board.querySelectorAll('.cards-list').forEach(list => {
+    list.addEventListener('dragover', e => { e.preventDefault(); list.classList.add('drag-over'); });
+    list.addEventListener('dragleave', () => list.classList.remove('drag-over'));
+    list.addEventListener('drop', e => {
+      e.preventDefault(); list.classList.remove('drag-over');
+      const lead = leads.find(l => l.id === dragId);
+      if (lead && lead.stage !== list.dataset.stage) { lead.stage = list.dataset.stage; save(); render(); }
+    });
+  });
+}
+
+function cardHTML(l) {
+  const gp = computeGP(l.product, l.volume);
+  const prob = Number(l.prob) || 0;
+  const priLabel = { high: 'High', medium: 'Med', low: 'Low' }[l.priority] || '';
+  const p = PRODUCTS[l.product];
+  const volLabel = p ? (p.basis === 'monthly' ? 'mo. vol' : 'ann. vol') : 'vol';
+  return `
+    <div class="card" draggable="true" data-id="${l.id}">
+      <div class="card-company">${esc(l.company)}</div>
+      <div class="card-contact">${esc(l.contact || '—')}</div>
+      <div class="card-gp-row">
+        <div class="card-gp">${fmt(gp)}</div>
+        <div class="card-gp-label">GP</div>
+      </div>
+      <div class="card-volume">${fmt(l.volume)} ${volLabel}</div>
+      <div class="card-prob-bar"><div class="card-prob-fill" style="width:${prob}%;background:${probColor(prob)}"></div></div>
+      <div class="card-tags">
+        <span class="tag ${prodClass(l.product)}">${esc(l.product)}</span>
+        <span class="tag pri-${l.priority}">${priLabel}</span>
+      </div>
+      ${l.nextAction ? `<div class="card-next-action"><strong>Next:</strong> ${esc(l.nextAction)}</div>` : ''}
+      <div class="card-footer">
+        <div class="card-prob-text">${prob}% probability · ${daysSince(l.createdAt)}</div>
+        <div class="card-actions">
+          <button class="btn-icon" title="Edit" onclick="openModal('${l.id}')">&#9998;</button>
+          <button class="btn-icon del" title="Delete" onclick="deleteLead('${l.id}')">&#10005;</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* ── GP preview in modal ── */
+function updateVolumeLabel() {
+  const product = document.getElementById('f-product').value;
+  const p = PRODUCTS[product];
+  document.getElementById('volume-label').textContent = p && p.basis === 'monthly' ? 'Monthly Volume (€)' : 'Annual Volume (€)';
+}
+
+function calcGP() {
+  const product = document.getElementById('f-product').value;
+  const volume = document.getElementById('f-volume').value;
+  const gp = computeGP(product, volume);
+  const preview = document.getElementById('gp-preview');
+  if (gp > 0) {
+    preview.classList.add('show');
+    document.getElementById('gp-preview-value').textContent = fmt(gp);
+    document.getElementById('gp-preview-note').textContent = PRODUCTS[product]?.note || '';
+  } else {
+    preview.classList.remove('show');
+  }
+}
+
+/* ── Modal ── */
+function openModal(id) {
+  editingId = id || null;
+  document.getElementById('f-stage').innerHTML = STAGES.map(s => `<option value="${s.id}">${s.label}</option>`).join('');
+
+  if (id) {
+    const l = leads.find(x => x.id === id);
+    document.getElementById('modal-title').textContent = 'Edit Lead';
+    document.getElementById('f-company').value = l.company;
+    document.getElementById('f-contact').value = l.contact || '';
+    document.getElementById('f-email').value = l.email || '';
+    document.getElementById('f-phone').value = l.phone || '';
+    document.getElementById('f-product').value = l.product || 'Cards';
+    document.getElementById('f-volume').value = l.volume || '';
+    document.getElementById('f-stage').value = l.stage;
+    document.getElementById('f-prob').value = l.prob || '30';
+    document.getElementById('f-priority').value = l.priority || 'medium';
+    document.getElementById('f-next').value = l.nextAction || '';
+    document.getElementById('f-notes').value = l.notes || '';
+  } else {
+    document.getElementById('modal-title').textContent = 'New Lead';
+    ['f-company','f-contact','f-email','f-phone','f-volume','f-next','f-notes'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('f-product').value = 'Cards';
+    document.getElementById('f-stage').value = 'qualified';
+    document.getElementById('f-prob').value = '30';
+    document.getElementById('f-priority').value = 'medium';
+  }
+  updateVolumeLabel(); calcGP();
+  document.getElementById('modal-backdrop').classList.add('open');
+  document.getElementById('f-company').focus();
+}
+
+function closeModal() { document.getElementById('modal-backdrop').classList.remove('open'); editingId = null; document.getElementById('gp-preview').classList.remove('show'); }
+function backdropClick(e) { if (e.target === document.getElementById('modal-backdrop')) closeModal(); }
+
+function saveLead() {
+  const company = document.getElementById('f-company').value.trim();
+  if (!company) { document.getElementById('f-company').focus(); return; }
+  const data = {
+    company,
+    contact:    document.getElementById('f-contact').value.trim(),
+    email:      document.getElementById('f-email').value.trim(),
+    phone:      document.getElementById('f-phone').value.trim(),
+    product:    document.getElementById('f-product').value,
+    volume:     document.getElementById('f-volume').value,
+    stage:      document.getElementById('f-stage').value,
+    prob:       document.getElementById('f-prob').value,
+    priority:   document.getElementById('f-priority').value,
+    nextAction: document.getElementById('f-next').value.trim(),
+    notes:      document.getElementById('f-notes').value.trim(),
+  };
+  if (editingId) {
+    const idx = leads.findIndex(l => l.id === editingId);
+    leads[idx] = { ...leads[idx], ...data };
+  } else {
+    leads.push({ id: crypto.randomUUID(), createdAt: Date.now(), ...data });
+  }
+  save(); closeModal(); render();
+}
+
+function deleteLead(id) {
+  if (!confirm('Remove this lead?')) return;
+  leads = leads.filter(l => l.id !== id);
+  save(); render();
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+render();
+</script>
+</body>
+</html>
