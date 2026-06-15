@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Juanito — Lead Tracker</title>
+  <style>
+    :root {
+      --bg:       #0c0c10;
+      --bg2:      #13131a;
+      --bg3:      #1a1a24;
+      --bg4:      #1f1f2e;
+      --border:   #252538;
+      --border2:  #2e2e45;
+      --text:     #e4e4f0;
+      --muted:    #9090b0;
+      --faint:    #525270;
+      --purple:   #7b5cff;
+      --blue:     #4f8dff;
+      --cyan:     #00c4ff;
+      --green:    #4caf82;
+      --orange:   #ff9f4a;
+      --yellow:   #ffdb4a;
+      --red:      #ff4f6a;
+      --gold:     #f5c842;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── Header ── */
+    header { background: var(--bg3); border-bottom: 1px solid var(--border); padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; backdrop-filter: blur(8px); }
+    .logo { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 17px; letter-spacing: -0.2px; }
+    .logo-badge { background: linear-gradient(135deg, var(--purple), var(--blue)); color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .stats-pill { background: var(--bg4); border: 1px solid var(--border); border-radius: 20px; padding: 5px 14px; font-size: 12px; color: var(--muted); }
+    .stats-pill span { color: var(--purple); font-weight: 700; }
+    .btn-primary { background: linear-gradient(135deg, var(--purple), var(--blue)); color: #fff; border: none; border-radius: 8px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity .15s, transform .1s; }
+    .btn-primary:hover { opacity: .88; transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 2px; background: var(--bg2); border-bottom: 1px solid var(--border); padding: 0 28px; }
+    .tab { padding: 11px 18px; font-size: 12px; font-weight: 600; color: var(--faint); cursor: pointer; border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; user-select: none; letter-spacing: .2px; }
+    .tab:hover { color: var(--muted); }
+    .tab.active { color: var(--text); border-bottom-color: var(--purple); }
+    .tab .badge { background: var(--red); color: #fff; font-size: 9px; font-weight: 800; padding: 1px 5px; border-radius: 8px; margin-left: 5px; vertical-align: middle; }
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ── Toolbar ── */
+    .toolbar { padding: 12px 28px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: var(--bg2); border-bottom: 1px solid var(--border); }
+    .search-box { background: var(--bg3); border: 1px solid var(--border2); border-radius: 8px; padding: 7px 14px; color: var(--text); font-size: 13px; width: 220px; outline: none; transition: border-color .15s; }
+    .search-box:focus { border-color: var(--purple); }
+    .search-box::placeholder { color: var(--faint); }
+    .filter-select { background: var(--bg3); border: 1px solid var(--border2); border-radius: 8px; padding: 7px 11px; color: var(--text); font-size: 13px; outline: none; cursor: pointer; }
+    .filter-select option { background: var(--bg3); }
+    .toolbar-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+    .total-gp { font-size: 12px; color: var(--muted); }
+    .total-gp strong { color: var(--green); font-size: 14px; }
+
+    /* ── Board ── */
+    .board { display: flex; gap: 14px; padding: 20px 28px 40px; overflow-x: auto; align-items: flex-start; }
+    .board::-webkit-scrollbar { height: 5px; }
+    .board::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+    .column { min-width: 260px; max-width: 260px; background: var(--bg2); border-radius: 12px; border: 1px solid var(--border); display: flex; flex-direction: column; transition: border-color .2s; }
+    .column[data-stage="closed-won"]  { border-color: #4caf8230; }
+    .column[data-stage="closed-lost"] { border-color: #ff4f6a30; }
+    .column[data-stage="nab"]         { border-color: #f5c84230; }
+    .column-header { padding: 13px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+    .col-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .col-title { font-weight: 600; font-size: 12px; flex: 1; letter-spacing: .2px; }
+    .col-count { background: var(--border); border-radius: 9px; padding: 1px 7px; font-size: 10px; color: var(--muted); }
+    .col-gp { font-size: 10px; color: var(--green); font-weight: 700; }
+
+    .cards-list { padding: 10px; display: flex; flex-direction: column; gap: 7px; min-height: 120px; flex: 1; }
+    .cards-list.drag-over { background: #ffffff08; border-radius: 8px; }
+
+    /* ── Card ── */
+    .card { background: var(--bg3); border: 1px solid var(--border2); border-radius: 10px; padding: 12px 13px; cursor: grab; transition: border-color .15s, box-shadow .15s, transform .1s; position: relative; }
+    .card:hover { border-color: #7b5cff40; box-shadow: 0 4px 20px #0008; transform: translateY(-1px); }
+    .card.dragging { opacity: .35; cursor: grabbing; transform: scale(.98); }
+    .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2px; }
+    .card-company { font-weight: 700; font-size: 13px; line-height: 1.3; }
+    .card-contact { font-size: 11px; color: var(--muted); margin-bottom: 9px; }
+    .card-gp-row { display: flex; align-items: baseline; gap: 5px; margin-bottom: 3px; }
+    .card-gp { font-size: 16px; font-weight: 700; color: var(--green); }
+    .card-gp-label { font-size: 10px; color: var(--faint); }
+    .card-volume { font-size: 10px; color: var(--faint); margin-bottom: 9px; }
+    .card-prob-bar { height: 3px; background: var(--border); border-radius: 2px; margin-bottom: 8px; overflow: hidden; }
+    .card-prob-fill { height: 100%; border-radius: 2px; transition: width .3s; }
+    .card-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 7px; }
+    .tag { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: .4px; }
+    .card-next { font-size: 10px; color: var(--faint); border-top: 1px solid var(--border); padding-top: 7px; margin-top: 4px; line-height: 1.4; }
+    .card-next strong { color: var(--muted); }
+    .card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 7px; }
+    .card-meta { font-size: 10px; color: var(--faint); }
+    .card-actions { display: flex; gap: 3px; opacity: 0; transition: opacity .15s; }
+    .card:hover .card-actions { opacity: 1; }
+    .btn-icon { background: var(--bg4); border: none; border-radius: 5px; width: 22px; height: 22px; cursor: pointer; color: var(--faint); font-size: 11px; display: flex; align-items: center; justify-content: center; transition: background .1s, color .1s; }
+    .btn-icon:hover { background: var(--purple); color: #fff; }
+    .btn-icon.del:hover { background: var(--red); color: #fff; }
+
+    /* ── Tag colours ── */
+    .pri-high   { background: #ff4f6a1a; color: #ff7088; }
+    .pri-medium { background: #ff9f4a1a; color: #ffb86c; }
+    .pri-low    { background: #4caf821a; color: #6ecfa0; }
+    .t-cards     { background: #7b5cff1a; color: #9b8cff; }
+    .t-acquiring { background: #4f8dff1a; color: #7fb0ff; }
+    .t-fxspot    { background: #00c4ff1a; color: #40d8ff; }
+    .t-fxforward { background: #ff9f4a1a; color: #ffb86c; }
+    .t-nab       { background: #f5c8421a; color: #f5c842; }
+
+    .empty-col { text-align: center; padding: 28px 12px; color: var(--faint); font-size: 11px; }
+    .empty-col-icon { font-size: 22px; margin-bottom: 5px; opacity: .5; }
+    .add-here { margin-top: 8px; background: none; border: 1px dashed var(--border2); color: var(--faint); border-radius: 6px; padding: 5px 12px; font-size: 11px; cursor: pointer; transition: all .15s; width: 100%; }
+    .add-here:hover { border-color: var(--purple); color: var(--purple); background: #7b5cff0a; }
+
+    /* ── Modal ── */
+    .modal-backdrop { display: none; position: fixed; inset: 0; background: #00000099; z-index: 200; align-items: center; justify-content: center; backdrop-filter: blur(3px); }
+    .modal-backdrop.open { display: flex; }
+    .modal { background: var(--bg3); border: 1px solid var(--border2); border-radius: 16px; width: 560px; max-width: 96vw; max-height: 92vh; overflow-y: auto; padding: 28px; animation: pop .18s ease; }
+    .modal::-webkit-scrollbar { width: 4px; }
+    .modal::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+    @keyframes pop { from { transform: scale(.95) translateY(6px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+    .modal h2 { font-size: 17px; margin-bottom: 20px; }
+    .section-divider { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--faint); padding: 14px 0 8px; border-top: 1px solid var(--border); margin-top: 6px; }
+    .form-row { margin-bottom: 13px; }
+    .form-row label { display: block; font-size: 10px; font-weight: 700; color: var(--faint); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; }
+    .form-row input, .form-row select, .form-row textarea { width: 100%; background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 13px; outline: none; font-family: inherit; transition: border-color .15s; }
+    .form-row input[type="date"] { color-scheme: dark; }
+    .form-row input:focus, .form-row select:focus, .form-row textarea:focus { border-color: var(--purple); }
+    .form-row textarea { min-height: 68px; resize: vertical; }
+    .form-row select option { background: var(--bg3); }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+    .gp-preview { background: #0d211800; border: 1px solid #1a403000; border-radius: 8px; padding: 0; margin-bottom: 0; max-height: 0; overflow: hidden; transition: all .2s ease; }
+    .gp-preview.show { background: #0d2118; border-color: #1a4030; padding: 12px 14px; margin-bottom: 13px; max-height: 80px; }
+    .gp-preview-label { font-size: 10px; color: var(--green); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 3px; }
+    .gp-preview-value { font-size: 22px; font-weight: 700; color: var(--green); }
+    .gp-preview-note { font-size: 10px; color: #3a7a58; margin-top: 2px; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--border); }
+    .btn-cancel { background: var(--bg4); border: 1px solid var(--border2); border-radius: 8px; padding: 8px 18px; color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; transition: background .1s; }
+    .btn-cancel:hover { background: var(--border2); }
+    .btn-save { background: linear-gradient(135deg, var(--purple), var(--blue)); border: none; border-radius: 8px; padding: 8px 20px; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity .15s; }
+    .btn-save:hover { opacity: .85; }
+
+    /* Tasks in modal */
+    .tasks-list { display: flex; flex-direction: column; gap: 7px; margin-bottom: 8px; }
+    .task-row { display: flex; gap: 8px; align-items: center; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+    .task-row input[type="text"] { flex: 1; background: none; border: none; padding: 0; font-size: 12px; color: var(--text); outline: none; }
+    .task-row input[type="date"] { background: none; border: none; padding: 0; font-size: 11px; color: var(--muted); outline: none; width: 115px; color-scheme: dark; }
+    .task-row .btn-icon { flex-shrink: 0; opacity: .5; }
+    .task-row .btn-icon:hover { opacity: 1; }
+    .btn-add-task { background: none; border: 1px dashed var(--border2); border-radius: 7px; padding: 7px 14px; font-size: 11px; color: var(--faint); cursor: pointer; transition: all .15s; width: 100%; }
+    .btn-add-task:hover { border-color: var(--purple); color: var(--purple); background: #7b5cff0a; }
+
+    /* ── Next Actions ── */
+    .actions-page { padding: 22px 28px 40px; max-width: 960px; }
+    .week-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 26px; }
+    .week-day { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 11px 8px 10px; text-align: center; transition: border-color .15s; }
+    .week-day.today { border-color: var(--purple); background: #1e1a3a; }
+    .week-day.has-items { border-color: #ff9f4a40; }
+    .week-day.overdue-day { border-color: #ff4f6a40; }
+    .week-day-name { font-size: 9px; font-weight: 700; color: var(--faint); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 4px; }
+    .week-day-num  { font-size: 17px; font-weight: 700; color: var(--muted); line-height: 1; margin-bottom: 6px; }
+    .week-day.today .week-day-num { color: #9b8cff; }
+    .week-day-dots { display: flex; gap: 3px; justify-content: center; min-height: 7px; flex-wrap: wrap; }
+    .week-dot { width: 5px; height: 5px; border-radius: 50%; }
+
+    .action-group { margin-bottom: 22px; }
+    .group-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .group-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
+    .group-count { background: var(--border); border-radius: 9px; padding: 1px 7px; font-size: 10px; color: var(--muted); }
+    .group-line { flex: 1; height: 1px; background: var(--border); }
+
+    .action-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 7px; display: flex; align-items: flex-start; gap: 13px; transition: border-color .15s, box-shadow .15s; border-left-width: 3px; }
+    .action-card:hover { border-color: #7b5cff44; box-shadow: 0 2px 12px #0005; }
+    .action-card.is-task { border-left-style: dashed; }
+    .urgency-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+    .action-body { flex: 1; min-width: 0; }
+    .action-company { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
+    .action-company .stage-tag { font-size: 10px; font-weight: 500; color: var(--faint); margin-left: 6px; }
+    .action-task { font-size: 12px; color: #c0c0e0; margin-bottom: 7px; line-height: 1.45; }
+    .action-task.none { color: var(--faint); font-style: italic; }
+    .action-meta { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+    .date-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+    .date-badge.overdue  { background: #ff4f6a1a; color: #ff7088; }
+    .date-badge.today    { background: #ff9f4a1a; color: #ffb86c; }
+    .date-badge.soon     { background: #ffdb4a1a; color: #ffe080; }
+    .date-badge.upcoming { background: #4caf821a; color: #6ecfa0; }
+    .date-badge.no-date  { background: var(--border); color: var(--faint); }
+    .action-right { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; flex-shrink: 0; }
+    .action-gp { font-size: 12px; font-weight: 700; color: var(--green); }
+    .action-btns { display: flex; gap: 5px; }
+    .btn-done { background: #0d2a1a; border: 1px solid #1a4030; border-radius: 6px; padding: 4px 10px; font-size: 10px; font-weight: 700; color: var(--green); cursor: pointer; transition: all .1s; white-space: nowrap; }
+    .btn-done:hover { background: var(--green); color: #0a1a10; border-color: var(--green); }
+    .btn-sm { background: var(--bg4); border: 1px solid var(--border2); border-radius: 6px; padding: 4px 10px; font-size: 10px; font-weight: 600; color: var(--muted); cursor: pointer; transition: all .1s; }
+    .btn-sm:hover { background: var(--purple); color: #fff; border-color: var(--purple); }
+    .no-actions { text-align: center; padding: 56px 20px; color: var(--faint); }
+    .no-actions .icon { font-size: 36px; margin-bottom: 12px; opacity: .4; }
+
+    /* ── Mini modal ── */
+    .mini-backdrop { display: none; position: fixed; inset: 0; background: #00000088; z-index: 300; align-items: center; justify-content: center; backdrop-filter: blur(3px); }
+    .mini-backdrop.open { display: flex; }
+    .mini-modal { background: var(--bg3); border: 1px solid var(--border2); border-radius: 14px; width: 380px; max-width: 95vw; padding: 24px; animation: pop .15s ease; }
+    .mini-modal h3 { font-size: 14px; margin-bottom: 16px; }
+    .mini-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+
+    /* ── List view ── */
+    .list-page { padding: 20px 28px 40px; }
+    .list-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .list-table-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead { background: var(--bg3); }
+    th { padding: 10px 14px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--faint); white-space: nowrap; cursor: pointer; user-select: none; transition: color .15s; border-bottom: 1px solid var(--border); }
+    th:hover { color: var(--text); }
+    th .sort-arrow { margin-left: 4px; opacity: .4; }
+    th.sorted .sort-arrow { opacity: 1; color: var(--purple); }
+    td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; white-space: nowrap; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #ffffff04; }
+    .tbl-company { font-weight: 600; font-size: 13px; }
+    .tbl-contact { color: var(--muted); font-size: 11px; }
+    .tbl-gp { color: var(--green); font-weight: 700; }
+    .tbl-prob { display: flex; align-items: center; gap: 6px; }
+    .tbl-prob-bar { width: 40px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .tbl-prob-fill { height: 100%; border-radius: 2px; }
+    .stage-pill { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: .3px; }
+    .due-warn { color: var(--red); font-size: 10px; font-weight: 600; }
+    .list-actions { display: flex; gap: 4px; }
+    .empty-table { text-align: center; padding: 48px; color: var(--faint); }
+
+    /* ── Analytics ── */
+    .analytics-page { padding: 24px 28px 40px; max-width: 1200px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .kpi { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; transition: border-color .2s; }
+    .kpi:hover { border-color: var(--border2); }
+    .kpi-label { font-size: 10px; font-weight: 700; color: var(--faint); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 8px; }
+    .kpi-value { font-size: 24px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
+    .kpi-sub { font-size: 11px; color: var(--faint); }
+    .c-green { color: var(--green); } .c-purple { color: #9b8cff; } .c-orange { color: #ffb86c; } .c-red { color: #ff7088; } .c-blue { color: #7fb0ff; } .c-gold { color: var(--gold); }
+    .a-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .a-row.three { grid-template-columns: 1fr 1fr 1fr; }
+    @media(max-width:900px){.a-row,.a-row.three{grid-template-columns:1fr;}}
+    .panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+    .panel h2 { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: .5px; }
+    .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+    .bar-label { font-size: 11px; color: var(--muted); width: 110px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bar-track { flex: 1; height: 7px; background: var(--border); border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; transition: width .4s ease; }
+    .bar-val { font-size: 11px; color: var(--faint); width: 75px; text-align: right; flex-shrink: 0; }
+    .ring-wrap { display: flex; align-items: center; gap: 22px; }
+    .ring-legend { display: flex; flex-direction: column; gap: 9px; }
+    .ring-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+    .ring-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .prob-grid { display: grid; grid-template-columns: repeat(10,1fr); gap: 3px; align-items: end; height: 85px; }
+    .prob-col { display: flex; flex-direction: column; align-items: center; gap: 2px; height: 100%; justify-content: flex-end; }
+    .prob-bar-inner { width: 100%; border-radius: 2px 2px 0 0; min-height: 2px; }
+    .prob-tick { font-size: 8px; color: var(--faint); }
+    .prod-table { width: 100%; border-collapse: collapse; }
+    .prod-table th { font-size: 10px; font-weight: 700; color: var(--faint); text-transform: uppercase; letter-spacing: .4px; padding: 0 0 9px; text-align: left; }
+    .prod-table th:not(:first-child) { text-align: right; }
+    .prod-table td { padding: 8px 0; border-top: 1px solid var(--border); font-size: 12px; }
+    .prod-table td:not(:first-child) { text-align: right; color: var(--muted); }
+    .prod-table td.gp-cell { color: var(--green); font-weight: 700; }
+    .prod-badge { display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+    .funnel-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .funnel-label { font-size: 11px; color: var(--muted); width: 110px; flex-shrink: 0; }
+    .funnel-track { flex: 1; height: 26px; background: var(--bg3); border-radius: 6px; overflow: hidden; }
+    .funnel-fill { height: 100%; border-radius: 6px; display: flex; align-items: center; padding-left: 10px; font-size: 10px; font-weight: 700; white-space: nowrap; overflow: hidden; }
+    .funnel-stats { font-size: 11px; color: var(--faint); width: 80px; text-align: right; flex-shrink: 0; }
+    .act-list { display: flex; flex-direction: column; }
+    .act-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--bg3); }
+    .act-item:last-child { border: none; }
+    .act-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .act-text { flex: 1; font-size: 12px; }
+    .act-text strong { color: var(--text); }
+    .act-text span { color: var(--faint); }
+    .act-date { font-size: 10px; color: var(--faint); flex-shrink: 0; }
+    .no-data { text-align: center; padding: 40px; color: var(--faint); font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><span class="logo-badge">Revolut</span> Lead Tracker</div>
+  <div class="header-right">
+    <div class="stats-pill">Open: <span id="stat-open">0</span> &nbsp;·&nbsp; Won: <span id="stat-won">0</span></div>
+    <button class="btn-primary" id="btn-add-lead" onclick="openModal()">+ Add Lead</button>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active"  onclick="switchTab('pipeline')">&#9700; Pipeline</div>
+  <div class="tab"         onclick="switchTab('actions')">&#9998; Actions <span class="badge" id="actions-badge" style="display:none">0</span></div>
+  <div class="tab"         onclick="switchTab('list')">&#8801; All Leads</div>
+  <div class="tab"         onclick="switchTab('analytics')">&#9654; Analytics</div>
+</div>
+
+<!-- Pipeline -->
+<div class="view active" id="view-pipeline">
+  <div class="toolbar">
+    <input class="search-box" type="text" id="search" placeholder="Search company or contact…" oninput="renderBoard()">
+    <select class="filter-select" id="filter-product" onchange="renderBoard()">
+      <option value="">All products</option>
+      <option value="Cards">Cards</option>
+      <option value="Acquiring">Acquiring</option>
+      <option value="FX Spot">FX Spot</option>
+      <option value="FX Forward">FX Forward</option>
+    </select>
+    <select class="filter-select" id="filter-priority" onchange="renderBoard()">
+      <option value="">All priorities</option>
+      <option value="high">High</option>
+      <option value="medium">Medium</option>
+      <option value="low">Low</option>
+    </select>
+    <div class="toolbar-right">
+      <div class="total-gp">Weighted GP: <strong id="total-gp">€0</strong></div>
+    </div>
+  </div>
+  <div class="board" id="board"></div>
+</div>
+
+<!-- Next Actions -->
+<div class="view" id="view-actions">
+  <div class="actions-page">
+    <div class="week-cal" id="week-cal"></div>
+    <div id="actions-list"></div>
+  </div>
+</div>
+
+<!-- All Leads list -->
+<div class="view" id="view-list">
+  <div class="list-page">
+    <div class="list-toolbar">
+      <input class="search-box" type="text" id="list-search" placeholder="Search…" oninput="renderList()">
+      <select class="filter-select" id="list-stage" onchange="renderList()">
+        <option value="">All stages</option>
+      </select>
+      <select class="filter-select" id="list-product" onchange="renderList()">
+        <option value="">All products</option>
+        <option value="Cards">Cards</option>
+        <option value="Acquiring">Acquiring</option>
+        <option value="FX Spot">FX Spot</option>
+        <option value="FX Forward">FX Forward</option>
+      </select>
+      <select class="filter-select" id="list-priority" onchange="renderList()">
+        <option value="">All priorities</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+      </select>
+    </div>
+    <div class="list-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="sortList('company')">Company <span class="sort-arrow">↕</span></th>
+            <th onclick="sortList('contact')">Contact <span class="sort-arrow">↕</span></th>
+            <th onclick="sortList('product')">Product <span class="sort-arrow">↕</span></th>
+            <th onclick="sortList('stage')">Stage <span class="sort-arrow">↕</span></th>
+            <th onclick="sortList('gp')">GP <span class="sort-arrow">↕</span></th>
+            <th onclick="sortList('volume')">Volume <span class="sort-arrow">↕</span></th>
+            <th onclick="sortList('prob')">Probability <span class="sort-arrow">↕</span></th>
+            <th onclick="sortList('priority')">Priority <span class="sort-arrow">↕</span></th>
+            <th onclick="sortList('dueDate')">Due Date <span class="sort-arrow">↕</span></th>
+            <th onclick="sortList('createdAt')">Added <span class="sort-arrow">↕</span></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="list-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Analytics -->
+<div class="view" id="view-analytics">
+  <div class="analytics-page" id="analytics-content"></div>
+</div>
+
+<!-- Lead modal -->
+<div class="modal-backdrop" id="modal-backdrop" onclick="backdropClick(event)">
+  <div class="modal">
+    <h2 id="modal-title">New Lead</h2>
+    <div class="form-grid">
+      <div class="form-row"><label>Company *</label><input id="f-company" type="text" placeholder="Acme Corp"></div>
+      <div class="form-row"><label>Contact name</label><input id="f-contact" type="text" placeholder="Jane Smith"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>Email</label><input id="f-email" type="email" placeholder="jane@acme.com"></div>
+      <div class="form-row"><label>Phone</label><input id="f-phone" type="text" placeholder="+44 7…"></div>
+    </div>
+
+    <div class="section-divider">Deal info</div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Product</label>
+        <select id="f-product" onchange="updateVolumeLabel();calcGP();">
+          <option value="Cards">Cards (1.2% · 3mo)</option>
+          <option value="Acquiring">Acquiring (0.4% · 3mo)</option>
+          <option value="FX Spot">FX Spot (0.6% · 3mo window)</option>
+          <option value="FX Forward">FX Forward (0.8% · 6mo)</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label id="volume-label">Monthly Volume (€)</label>
+        <input id="f-volume" type="number" placeholder="0" oninput="calcGP()">
+      </div>
+    </div>
+    <div class="gp-preview" id="gp-preview">
+      <div class="gp-preview-label">Estimated GP</div>
+      <div class="gp-preview-value" id="gp-preview-value">€0</div>
+      <div class="gp-preview-note" id="gp-preview-note"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>Stage</label><select id="f-stage"></select></div>
+      <div class="form-row">
+        <label>Probability</label>
+        <select id="f-prob">
+          <option value="10">10%</option><option value="20">20%</option>
+          <option value="30" selected>30%</option><option value="40">40%</option>
+          <option value="50">50%</option><option value="60">60%</option>
+          <option value="70">70%</option><option value="80">80%</option>
+          <option value="90">90%</option><option value="100">100%</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Priority</label>
+      <select id="f-priority">
+        <option value="high">High</option>
+        <option value="medium" selected>Medium</option>
+        <option value="low">Low</option>
+      </select>
+    </div>
+
+    <div class="section-divider">Next action</div>
+    <div class="form-grid">
+      <div class="form-row"><label>Action</label><input id="f-next" type="text" placeholder="e.g. Send pricing deck"></div>
+      <div class="form-row"><label>Due date</label><input id="f-due" type="date"></div>
+    </div>
+
+    <div class="section-divider">Tasks <span style="font-weight:400;color:var(--faint);text-transform:none;letter-spacing:0">(optional — each appears in Actions tab)</span></div>
+    <div class="tasks-list" id="tasks-list"></div>
+    <button class="btn-add-task" onclick="addTaskRow()">+ Add task</button>
+
+    <div class="section-divider">Notes</div>
+    <div class="form-row"><textarea id="f-notes" placeholder="Any relevant context…"></textarea></div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveLead()">Save lead</button>
+    </div>
+  </div>
+</div>
+
+<!-- Mini done modal -->
+<div class="mini-backdrop" id="mini-backdrop" onclick="closeMiniBackdrop(event)">
+  <div class="mini-modal">
+    <h3>&#10003; Done — what's next?</h3>
+    <div class="form-row"><label>Next action</label><input id="m-next" type="text" placeholder="What's the next step?"></div>
+    <div class="form-row"><label>Due date</label><input id="m-due" type="date"></div>
+    <div class="mini-footer">
+      <button class="btn-cancel" onclick="document.getElementById('mini-backdrop').classList.remove('open')">Cancel</button>
+      <button class="btn-save" onclick="saveMini()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STAGES = [
+  { id:'qualified',   label:'Qualified',     color:'#00c4ff' },
+  { id:'demo',        label:'Demo / Meeting', color:'#ff9f4a' },
+  { id:'negotiation', label:'Negotiation',   color:'#ff7b4a' },
+  { id:'nab',         label:'NAB to Sell',   color:'#f5c842' },
+  { id:'closed-won',  label:'Closed Won',    color:'#4caf82' },
+  { id:'closed-lost', label:'Closed Lost',   color:'#ff4f6a' },
+];
+const PRODUCTS = {
+  'Cards':      { rate:0.012, months:3, basis:'monthly', note:'1.2% × 3 months of monthly volume',   color:'#9b8cff' },
+  'Acquiring':  { rate:0.004, months:3, basis:'monthly', note:'0.4% × 3 months of monthly volume',   color:'#7fb0ff' },
+  'FX Spot':    { rate:0.006, months:3, basis:'annual',  note:'0.6% of annual volume × 3-mo window', color:'#40d8ff' },
+  'FX Forward': { rate:0.008, months:6, basis:'annual',  note:'0.8% of annual volume × 6-mo window', color:'#ffb86c' },
+};
+const PS = {
+  'Cards':     'background:#7b5cff1a;color:#9b8cff',
+  'Acquiring': 'background:#4f8dff1a;color:#7fb0ff',
+  'FX Spot':   'background:#00c4ff1a;color:#40d8ff',
+  'FX Forward':'background:#ff9f4a1a;color:#ffb86c',
+};
+const STAGE_COLOR = Object.fromEntries(STAGES.map(s=>[s.id,s.color]));
+const PRI_ORDER = {high:0,medium:1,low:2};
+
+function computeGP(product, volume) {
+  const v=Number(volume)||0; if(!v||!PRODUCTS[product]) return 0;
+  const p=PRODUCTS[product];
+  if(p.basis==='monthly') return v*p.rate*p.months;
+  return v*p.rate*(p.months/12);
+}
+function fmt(v){ return '€'+Number(v||0).toLocaleString('en-IE',{maximumFractionDigits:0}); }
+function pct(a,b){ return b?Math.round(a/b*100):0; }
+function probColor(p){ return p<=30?'#ff4f6a':p<=60?'#ff9f4a':'#4caf82'; }
+function daysSince(ts){ const d=Math.floor((Date.now()-ts)/86400000); return d===0?'today':d===1?'1d ago':d+'d ago'; }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function mk(tag,cls){ const e=document.createElement(tag); if(cls)e.className=cls; return e; }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+
+let leads=JSON.parse(localStorage.getItem('revolut-leads-v2')||'[]');
+let editingId=null,dragId=null,miniLeadId=null,miniTaskId=null;
+let listSort={key:'createdAt',dir:-1};
+function save(){ localStorage.setItem('revolut-leads-v2',JSON.stringify(leads)); updateActionsBadge(); }
+
+/* ── Tabs ── */
+function switchTab(tab){
+  const ids=['pipeline','actions','list','analytics'];
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',ids[i]===tab));
+  ids.forEach(id=>document.getElementById('view-'+id).classList.toggle('active',id===tab));
+  document.getElementById('btn-add-lead').style.display=tab==='pipeline'?'':'none';
+  if(tab==='actions')   renderActions();
+  if(tab==='list')      renderList();
+  if(tab==='analytics') renderAnalytics();
+}
+document.getElementById('btn-add-lead').style.display='';
+
+function updateActionsBadge(){
+  const t=todayStr();
+  const n=leads.filter(l=>l.stage!=='closed-won'&&l.stage!=='closed-lost'&&((l.nextAction&&l.dueDate&&l.dueDate<=t)||(l.tasks||[]).some(tk=>!tk.done&&tk.dueDate&&tk.dueDate<=t))).length;
+  const b=document.getElementById('actions-badge');
+  b.textContent=n; b.style.display=n>0?'':'none';
+}
+
+/* ── Pipeline ── */
+function renderBoard(){
+  const q=document.getElementById('search').value.toLowerCase();
+  const fp=document.getElementById('filter-product').value;
+  const fpr=document.getElementById('filter-priority').value;
+  const filtered=leads.filter(l=>{
+    if(q&&!l.company.toLowerCase().includes(q)&&!(l.contact||'').toLowerCase().includes(q)) return false;
+    if(fp&&l.product!==fp) return false;
+    if(fpr&&l.priority!==fpr) return false;
+    return true;
+  });
+  const board=document.getElementById('board'); board.innerHTML='';
+  let totalOpen=0,totalWon=0,weightedGP=0;
+  STAGES.forEach(stage=>{
+    const cards=filtered.filter(l=>l.stage===stage.id);
+    const stageGP=cards.reduce((s,l)=>s+computeGP(l.product,l.volume),0);
+    cards.forEach(l=>{
+      const gp=computeGP(l.product,l.volume);
+      if(l.stage==='closed-won'){totalWon++;weightedGP+=gp;}
+      else if(l.stage!=='closed-lost'){totalOpen++;weightedGP+=gp*(Number(l.prob)/100);}
+    });
+    const col=mk('div','column'); col.dataset.stage=stage.id;
+    const emptyHTML=`<div class="empty-col"><div class="empty-col-icon">&#9675;</div>No leads<br><button class="add-here" onclick="openModalForStage('${stage.id}')">+ Add here</button></div>`;
+    col.innerHTML=`<div class="column-header"><div class="col-dot" style="background:${stage.color}"></div><div class="col-title">${stage.label}</div><div class="col-count">${cards.length}</div>${stageGP?`<div class="col-gp">${fmt(stageGP)}</div>`:''}</div><div class="cards-list" data-stage="${stage.id}">${cards.length===0?emptyHTML:cards.map(cardHTML).join('')}</div>`;
+    board.appendChild(col);
+  });
+  document.getElementById('stat-open').textContent=totalOpen;
+  document.getElementById('stat-won').textContent=totalWon;
+  document.getElementById('total-gp').textContent=fmt(weightedGP);
+  board.querySelectorAll('.card').forEach(el=>{
+    el.addEventListener('dragstart',()=>{dragId=el.dataset.id;setTimeout(()=>el.classList.add('dragging'),0);});
+    el.addEventListener('dragend',()=>{el.classList.remove('dragging');board.querySelectorAll('.cards-list').forEach(l=>l.classList.remove('drag-over'));});
+  });
+  board.querySelectorAll('.cards-list').forEach(list=>{
+    list.addEventListener('dragover',e=>{e.preventDefault();list.classList.add('drag-over');});
+    list.addEventListener('dragleave',()=>list.classList.remove('drag-over'));
+    list.addEventListener('drop',e=>{e.preventDefault();list.classList.remove('drag-over');const lead=leads.find(l=>l.id===dragId);if(lead&&lead.stage!==list.dataset.stage){lead.stage=list.dataset.stage;save();renderBoard();}});
+  });
+}
+
+function cardHTML(l){
+  const gp=computeGP(l.product,l.volume),prob=Number(l.prob)||0;
+  const p=PRODUCTS[l.product],volLabel=p&&p.basis==='monthly'?'mo. vol':'ann. vol';
+  const priLabel={high:'High',medium:'Med',low:'Low'}[l.priority]||'';
+  const today=todayStr();
+  const tasks=(l.tasks||[]).filter(t=>!t.done);
+  const taskCount=tasks.length;
+  const dueBadge=l.dueDate?(l.dueDate<today?`<span style="color:#ff7088;font-weight:700">&#9888; ${l.dueDate}</span>`:l.dueDate===today?`<span style="color:#ffb86c;font-weight:700">Due today</span>`:`<span style="color:var(--faint)">${l.dueDate}</span>`):'';
+  return `<div class="card" draggable="true" data-id="${l.id}">
+    <div class="card-top"><div class="card-company">${esc(l.company)}</div></div>
+    <div class="card-contact">${esc(l.contact||'—')}</div>
+    <div class="card-gp-row"><div class="card-gp">${fmt(gp)}</div><div class="card-gp-label">GP</div></div>
+    <div class="card-volume">${fmt(l.volume)} ${volLabel}</div>
+    <div class="card-prob-bar"><div class="card-prob-fill" style="width:${prob}%;background:${probColor(prob)}"></div></div>
+    <div class="card-tags">
+      <span class="tag" style="${PS[l.product]}">${esc(l.product)}</span>
+      <span class="tag pri-${l.priority}">${priLabel}</span>
+      ${taskCount>0?`<span class="tag" style="background:#ffffff10;color:var(--muted)">&#9998; ${taskCount}</span>`:''}
+    </div>
+    ${l.nextAction?`<div class="card-next"><strong>Next:</strong> ${esc(l.nextAction)} ${dueBadge}</div>`:''}
+    <div class="card-footer">
+      <div class="card-meta">${prob}% · ${daysSince(l.createdAt)}</div>
+      <div class="card-actions">
+        <button class="btn-icon" title="Edit" onclick="openModal('${l.id}')">&#9998;</button>
+        <button class="btn-icon del" title="Delete" onclick="deleteLead('${l.id}')">&#10005;</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ── Next Actions ── */
+function renderActions(){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const todayS=todayStr();
+  const cal=document.getElementById('week-cal'); cal.innerHTML='';
+  const dow=today.getDay(),weekStart=new Date(today);
+  weekStart.setDate(today.getDate()-(dow===0?6:dow-1));
+  const DNAMES=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const open=leads.filter(l=>l.stage!=='closed-won'&&l.stage!=='closed-lost');
+
+  // collect all action items
+  function allActions(l){
+    const items=[];
+    if(l.nextAction) items.push({leadId:l.id,text:l.nextAction,dueDate:l.dueDate||'',isTask:false,taskId:null});
+    (l.tasks||[]).filter(t=>!t.done).forEach(t=>items.push({leadId:l.id,text:t.text,dueDate:t.dueDate||'',isTask:true,taskId:t.id}));
+    return items;
+  }
+
+  for(let i=0;i<7;i++){
+    const d=new Date(weekStart); d.setDate(weekStart.getDate()+i);
+    const ds=d.toISOString().slice(0,10);
+    const dayItems=open.flatMap(l=>allActions(l)).filter(a=>a.dueDate===ds);
+    const isToday=ds===todayS,isPast=ds<todayS;
+    const div=mk('div','week-day'+(isToday?' today':dayItems.length&&isPast?' overdue-day':dayItems.length?' has-items':''));
+    div.innerHTML=`<div class="week-day-name">${DNAMES[i]}</div><div class="week-day-num">${d.getDate()}</div><div class="week-day-dots">${dayItems.slice(0,6).map(()=>`<div class="week-dot" style="background:${isPast?'#ff4f6a':isToday?'#ff9f4a':'#4caf82'}"></div>`).join('')}</div>`;
+    cal.appendChild(div);
+  }
+
+  const tomorrow=new Date(today); tomorrow.setDate(today.getDate()+1);
+  const tomorrowS=tomorrow.toISOString().slice(0,10);
+  const weekEnd=new Date(weekStart); weekEnd.setDate(weekStart.getDate()+6);
+  const weekEndS=weekEnd.toISOString().slice(0,10);
+
+  function urgency(dueDate){
+    if(!dueDate) return 'no-date';
+    if(dueDate<todayS) return 'overdue';
+    if(dueDate===todayS) return 'today';
+    if(dueDate===tomorrowS) return 'soon';
+    if(dueDate<=weekEndS) return 'upcoming';
+    return 'later';
+  }
+
+  const groups=[
+    {key:'overdue',  label:'Overdue',     color:'#ff4f6a', badgeClass:'overdue'},
+    {key:'today',    label:'Today',        color:'#ff9f4a', badgeClass:'today'},
+    {key:'soon',     label:'Tomorrow',    color:'#ffdb4a', badgeClass:'soon'},
+    {key:'upcoming', label:'This Week',   color:'#4caf82', badgeClass:'upcoming'},
+    {key:'later',    label:'Upcoming',    color:'#7fb0ff', badgeClass:'upcoming'},
+    {key:'no-date',  label:'No Date',     color:'#525270', badgeClass:'no-date'},
+  ];
+
+  const container=document.getElementById('actions-list'); container.innerHTML='';
+  let anyShown=false;
+
+  groups.forEach(g=>{
+    // gather items for this group
+    const items=[];
+    open.forEach(l=>{
+      allActions(l).filter(a=>urgency(a.dueDate)===g.key).forEach(a=>items.push({...a,lead:l}));
+    });
+    if(!items.length) return;
+    anyShown=true;
+    items.sort((a,b)=>{ if(a.dueDate&&b.dueDate) return a.dueDate.localeCompare(b.dueDate); return (PRI_ORDER[a.lead.priority]||1)-(PRI_ORDER[b.lead.priority]||1); });
+
+    const group=mk('div','action-group');
+    const gh=mk('div','group-header');
+    gh.innerHTML=`<div class="group-label" style="color:${g.color}">${g.label}</div><div class="group-count">${items.length}</div><div class="group-line"></div>`;
+    group.appendChild(gh);
+
+    items.forEach(a=>{
+      const l=a.lead;
+      const gp=computeGP(l.product,l.volume);
+      const stage=STAGES.find(s=>s.id===l.stage)||{};
+      const priLabel={high:'🔴 High',medium:'🟡 Med',low:'🟢 Low'}[l.priority]||'';
+      let dateBadge='';
+      if(a.dueDate){
+        const diff=Math.round((new Date(a.dueDate)-today)/86400000);
+        const lbl=diff<0?`${Math.abs(diff)}d overdue`:diff===0?'Today':diff===1?'Tomorrow':`${diff}d`;
+        dateBadge=`<span class="date-badge ${g.badgeClass}">${lbl}</span>`;
+      } else {
+        dateBadge=`<span class="date-badge no-date">No date</span>`;
+      }
+      const card=mk('div',`action-card${a.isTask?' is-task':''}`);
+      card.style.borderLeftColor=g.color;
+      card.innerHTML=`
+        <div class="urgency-dot" style="background:${g.color}"></div>
+        <div class="action-body">
+          <div class="action-company">${esc(l.company)}<span class="stage-tag">${esc(stage.label||'')} · ${esc(l.product)}</span></div>
+          <div class="action-task">${a.text?esc(a.text):'<span class="none">No action text</span>'}</div>
+          <div class="action-meta">${dateBadge}<span style="font-size:10px;color:var(--faint)">${priLabel}</span><span style="font-size:10px;color:var(--faint)">${Number(l.prob)||0}% prob</span>${a.isTask?'<span style="font-size:10px;color:var(--faint)">&#9998; task</span>':''}</div>
+        </div>
+        <div class="action-right">
+          <div class="action-gp">${fmt(gp)}</div>
+          <div class="action-btns">
+            <button class="btn-done" onclick="openMini('${l.id}','${a.taskId||''}')">&#10003; Done</button>
+            <button class="btn-sm" onclick="openModal('${l.id}')">Edit</button>
+          </div>
+        </div>`;
+      group.appendChild(card);
+    });
+    container.appendChild(group);
+  });
+
+  if(!anyShown) container.innerHTML='<div class="no-actions"><div class="icon">&#10003;</div>No pending actions. Add leads with next steps from the Pipeline tab.</div>';
+}
+
+/* ── Mini modal ── */
+function openMini(leadId,taskId){
+  miniLeadId=leadId; miniTaskId=taskId||null;
+  document.getElementById('m-next').value='';
+  document.getElementById('m-due').value='';
+  document.getElementById('mini-backdrop').classList.add('open');
+  document.getElementById('m-next').focus();
+}
+function closeMiniBackdrop(e){ if(e.target===document.getElementById('mini-backdrop')) document.getElementById('mini-backdrop').classList.remove('open'); }
+function saveMini(){
+  const lead=leads.find(l=>l.id===miniLeadId);
+  if(!lead) return;
+  if(miniTaskId){
+    const task=(lead.tasks||[]).find(t=>t.id===miniTaskId);
+    if(task) task.done=true;
+    // add new task if text entered
+    const newText=document.getElementById('m-next').value.trim();
+    if(newText){ lead.tasks=lead.tasks||[]; lead.tasks.push({id:crypto.randomUUID(),text:newText,dueDate:document.getElementById('m-due').value,done:false}); }
+  } else {
+    lead.nextAction=document.getElementById('m-next').value.trim();
+    lead.dueDate=document.getElementById('m-due').value;
+  }
+  save(); renderBoard();
+  document.getElementById('mini-backdrop').classList.remove('open');
+  renderActions();
+}
+
+/* ── Tasks in modal ── */
+let modalTasks=[];
+function addTaskRow(text='',dueDate=''){
+  modalTasks.push({id:crypto.randomUUID(),text,dueDate,done:false});
+  renderTaskRows();
+}
+function removeTaskRow(id){ modalTasks=modalTasks.filter(t=>t.id!==id); renderTaskRows(); }
+function renderTaskRows(){
+  const list=document.getElementById('tasks-list'); list.innerHTML='';
+  modalTasks.forEach(t=>{
+    const row=mk('div','task-row');
+    row.innerHTML=`<input type="text" placeholder="Task description…" value="${esc(t.text)}" oninput="updateTask('${t.id}','text',this.value)"><input type="date" value="${t.dueDate||''}" oninput="updateTask('${t.id}','dueDate',this.value)"><button class="btn-icon del" onclick="removeTaskRow('${t.id}')">&#10005;</button>`;
+    list.appendChild(row);
+  });
+}
+function updateTask(id,field,value){ const t=modalTasks.find(x=>x.id===id); if(t) t[field]=value; }
+
+/* ── Lead modal ── */
+function updateVolumeLabel(){
+  const p=PRODUCTS[document.getElementById('f-product').value];
+  document.getElementById('volume-label').textContent=p&&p.basis==='monthly'?'Monthly Volume (€)':'Annual Volume (€)';
+}
+function calcGP(){
+  const gp=computeGP(document.getElementById('f-product').value,document.getElementById('f-volume').value);
+  const el=document.getElementById('gp-preview');
+  if(gp>0){el.classList.add('show');document.getElementById('gp-preview-value').textContent=fmt(gp);document.getElementById('gp-preview-note').textContent=PRODUCTS[document.getElementById('f-product').value]?.note||'';}
+  else el.classList.remove('show');
+}
+function openModalForStage(stageId){ openModal(null,stageId); }
+function openModal(id,defaultStage){
+  editingId=id||null;
+  document.getElementById('f-stage').innerHTML=STAGES.map(s=>`<option value="${s.id}">${s.label}</option>`).join('');
+  if(id){
+    const l=leads.find(x=>x.id===id);
+    document.getElementById('modal-title').textContent='Edit Lead';
+    document.getElementById('f-company').value=l.company;
+    document.getElementById('f-contact').value=l.contact||'';
+    document.getElementById('f-email').value=l.email||'';
+    document.getElementById('f-phone').value=l.phone||'';
+    document.getElementById('f-product').value=l.product||'Cards';
+    document.getElementById('f-volume').value=l.volume||'';
+    document.getElementById('f-stage').value=l.stage;
+    document.getElementById('f-prob').value=l.prob||'30';
+    document.getElementById('f-priority').value=l.priority||'medium';
+    document.getElementById('f-next').value=l.nextAction||'';
+    document.getElementById('f-due').value=l.dueDate||'';
+    document.getElementById('f-notes').value=l.notes||'';
+    modalTasks=JSON.parse(JSON.stringify(l.tasks||[]));
+  } else {
+    document.getElementById('modal-title').textContent='New Lead';
+    ['f-company','f-contact','f-email','f-phone','f-volume','f-next','f-notes'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('f-product').value='Cards';
+    document.getElementById('f-stage').value=defaultStage||'qualified';
+    document.getElementById('f-prob').value='30';
+    document.getElementById('f-priority').value='medium';
+    document.getElementById('f-due').value='';
+    modalTasks=[];
+  }
+  renderTaskRows(); updateVolumeLabel(); calcGP();
+  document.getElementById('modal-backdrop').classList.add('open');
+  document.getElementById('f-company').focus();
+}
+function closeModal(){ document.getElementById('modal-backdrop').classList.remove('open'); editingId=null; document.getElementById('gp-preview').classList.remove('show'); }
+function backdropClick(e){ if(e.target===document.getElementById('modal-backdrop')) closeModal(); }
+function saveLead(){
+  const company=document.getElementById('f-company').value.trim();
+  if(!company){document.getElementById('f-company').focus();return;}
+  const data={
+    company,
+    contact:   document.getElementById('f-contact').value.trim(),
+    email:     document.getElementById('f-email').value.trim(),
+    phone:     document.getElementById('f-phone').value.trim(),
+    product:   document.getElementById('f-product').value,
+    volume:    document.getElementById('f-volume').value,
+    stage:     document.getElementById('f-stage').value,
+    prob:      document.getElementById('f-prob').value,
+    priority:  document.getElementById('f-priority').value,
+    nextAction:document.getElementById('f-next').value.trim(),
+    dueDate:   document.getElementById('f-due').value,
+    notes:     document.getElementById('f-notes').value.trim(),
+    tasks:     modalTasks,
+  };
+  if(editingId){const i=leads.findIndex(l=>l.id===editingId);leads[i]={...leads[i],...data};}
+  else leads.push({id:crypto.randomUUID(),createdAt:Date.now(),...data});
+  save(); closeModal(); renderBoard();
+}
+function deleteLead(id){
+  if(!confirm('Remove this lead?')) return;
+  leads=leads.filter(l=>l.id!==id); save(); renderBoard();
+}
+
+/* ── List view ── */
+function sortList(key){
+  if(listSort.key===key) listSort.dir*=-1;
+  else{listSort.key=key;listSort.dir=key==='createdAt'?-1:1;}
+  renderList();
+}
+function renderList(){
+  // populate stage filter
+  const stageSelect=document.getElementById('list-stage');
+  if(stageSelect.children.length<=1){
+    STAGES.forEach(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=s.label;stageSelect.appendChild(o);});
+  }
+  const q=document.getElementById('list-search').value.toLowerCase();
+  const fs=document.getElementById('list-stage').value;
+  const fp=document.getElementById('list-product').value;
+  const fpr=document.getElementById('list-priority').value;
+  let rows=leads.filter(l=>{
+    if(q&&!l.company.toLowerCase().includes(q)&&!(l.contact||'').toLowerCase().includes(q)) return false;
+    if(fs&&l.stage!==fs) return false;
+    if(fp&&l.product!==fp) return false;
+    if(fpr&&l.priority!==fpr) return false;
+    return true;
+  });
+  // sort
+  const {key,dir}=listSort;
+  rows.sort((a,b)=>{
+    let av,bv;
+    if(key==='gp'){av=computeGP(a.product,a.volume);bv=computeGP(b.product,b.volume);}
+    else if(key==='volume'){av=Number(a.volume)||0;bv=Number(b.volume)||0;}
+    else if(key==='prob'){av=Number(a.prob)||0;bv=Number(b.prob)||0;}
+    else if(key==='priority'){av=PRI_ORDER[a.priority]??1;bv=PRI_ORDER[b.priority]??1;}
+    else if(key==='createdAt'){av=a.createdAt;bv=b.createdAt;}
+    else if(key==='dueDate'){av=a.dueDate||'z';bv=b.dueDate||'z';}
+    else{av=(a[key]||'').toLowerCase();bv=(b[key]||'').toLowerCase();}
+    if(av<bv) return -dir; if(av>bv) return dir; return 0;
+  });
+  // update sort arrows
+  document.querySelectorAll('th .sort-arrow').forEach(el=>el.textContent='↕');
+  document.querySelectorAll('th').forEach(th=>{
+    th.classList.remove('sorted');
+    const onclick=th.getAttribute('onclick')||'';
+    const m=onclick.match(/sortList\('(.+?)'\)/);
+    if(m&&m[1]===key){th.classList.add('sorted');th.querySelector('.sort-arrow').textContent=dir>0?'↑':'↓';}
+  });
+  const tbody=document.getElementById('list-tbody'); tbody.innerHTML='';
+  if(!rows.length){const tr=document.createElement('tr');tr.innerHTML=`<td colspan="11" class="empty-table">No leads match the current filters.</td>`;tbody.appendChild(tr);return;}
+  const today=todayStr();
+  rows.forEach(l=>{
+    const gp=computeGP(l.product,l.volume),prob=Number(l.prob)||0;
+    const stage=STAGES.find(s=>s.id===l.stage)||{};
+    const dueWarn=l.dueDate&&l.dueDate<=today?`<span class="due-warn"> &#9888;</span>`:'';
+    const priLabel={high:'🔴 High',medium:'🟡 Med',low:'🟢 Low'}[l.priority]||'';
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><div class="tbl-company">${esc(l.company)}</div></td>
+      <td><div class="tbl-contact">${esc(l.contact||'—')}</div></td>
+      <td><span class="tag" style="${PS[l.product]||''}">${esc(l.product)}</span></td>
+      <td><span class="stage-pill" style="background:${stage.color||'#fff'}22;color:${stage.color||'#fff'}">${esc(stage.label||l.stage)}</span></td>
+      <td class="tbl-gp">${fmt(gp)}</td>
+      <td>${fmt(l.volume)}</td>
+      <td><div class="tbl-prob"><span style="color:${probColor(prob)};font-weight:700;font-size:12px">${prob}%</span><div class="tbl-prob-bar"><div class="tbl-prob-fill" style="width:${prob}%;background:${probColor(prob)}"></div></div></div></td>
+      <td>${priLabel}</td>
+      <td>${l.dueDate?`${l.dueDate}${dueWarn}`:'<span style="color:var(--faint)">—</span>'}</td>
+      <td style="color:var(--faint)">${daysSince(l.createdAt)}</td>
+      <td><div class="list-actions"><button class="btn-icon" onclick="openModal('${l.id}')">&#9998;</button><button class="btn-icon del" onclick="deleteLead('${l.id}')">&#10005;</button></div></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ── Analytics ── */
+function renderAnalytics(){
+  const c=document.getElementById('analytics-content'); c.innerHTML='';
+  if(!leads.length){c.innerHTML='<div class="no-data">No leads yet.</div>';return;}
+  const open=leads.filter(l=>l.stage!=='closed-won'&&l.stage!=='closed-lost');
+  const won=leads.filter(l=>l.stage==='closed-won');
+  const lost=leads.filter(l=>l.stage==='closed-lost');
+  const openGP=open.reduce((s,l)=>s+computeGP(l.product,l.volume),0);
+  const wonGP=won.reduce((s,l)=>s+computeGP(l.product,l.volume),0);
+  const weightedGP=open.reduce((s,l)=>s+computeGP(l.product,l.volume)*(Number(l.prob)/100),0)+wonGP;
+  const closedN=won.length+lost.length;
+  const winRate=closedN?Math.round(won.length/closedN*100):0;
+  const avgProb=open.length?Math.round(open.reduce((s,l)=>s+Number(l.prob),0)/open.length):0;
+  const nabLeads=leads.filter(l=>l.stage==='nab');
+  const nabGP=nabLeads.reduce((s,l)=>s+computeGP(l.product,l.volume),0);
+
+  const kpi=mk('div','kpi-grid');
+  kpi.innerHTML=`
+    <div class="kpi"><div class="kpi-label">Weighted GP</div><div class="kpi-value c-green">${fmt(weightedGP)}</div><div class="kpi-sub">probability-adjusted</div></div>
+    <div class="kpi"><div class="kpi-label">Open Pipeline GP</div><div class="kpi-value c-purple">${fmt(openGP)}</div><div class="kpi-sub">${open.length} active deals</div></div>
+    <div class="kpi"><div class="kpi-label">Won GP</div><div class="kpi-value c-green">${fmt(wonGP)}</div><div class="kpi-sub">${won.length} deals</div></div>
+    <div class="kpi"><div class="kpi-label">NAB to Sell GP</div><div class="kpi-value c-gold">${fmt(nabGP)}</div><div class="kpi-sub">${nabLeads.length} clients</div></div>
+    <div class="kpi"><div class="kpi-label">Win Rate</div><div class="kpi-value ${winRate>=50?'c-green':winRate>=30?'c-orange':'c-red'}">${winRate}%</div><div class="kpi-sub">${won.length} won · ${lost.length} lost</div></div>
+    <div class="kpi"><div class="kpi-label">Avg. Probability</div><div class="kpi-value c-blue">${avgProb}%</div><div class="kpi-sub">open deals</div></div>`;
+  c.appendChild(kpi);
+
+  const r1=mk('div','a-row');
+  const fp=mk('div','panel'); fp.innerHTML='<h2>Pipeline Funnel</h2>';
+  const maxC=Math.max(...STAGES.map(s=>leads.filter(l=>l.stage===s.id).length),1);
+  STAGES.forEach(s=>{
+    const cnt=leads.filter(l=>l.stage===s.id).length,sgp=leads.filter(l=>l.stage===s.id).reduce((a,l)=>a+computeGP(l.product,l.volume),0);
+    const w=Math.max(pct(cnt,maxC),cnt>0?8:0),row=mk('div','funnel-row');
+    row.innerHTML=`<div class="funnel-label">${s.label}</div><div class="funnel-track"><div class="funnel-fill" style="width:${w}%;background:${s.color}22;color:${s.color}">${cnt>0?cnt+' deal'+(cnt>1?'s':''):''}</div></div><div class="funnel-stats">${sgp>0?fmt(sgp):'—'}</div>`;
+    fp.appendChild(row);
+  });
+  r1.appendChild(fp);
+
+  const pp=mk('div','panel'); pp.innerHTML=`<h2>GP by Product</h2><table class="prod-table"><thead><tr><th>Product</th><th>Deals</th><th>Total GP</th><th>Weighted GP</th></tr></thead><tbody id="ptb"></tbody></table>`;
+  r1.appendChild(pp); c.appendChild(r1);
+  const tb=pp.querySelector('#ptb');
+  Object.keys(PRODUCTS).forEach(p=>{
+    const pl=leads.filter(l=>l.product===p),pgp=pl.reduce((s,l)=>s+computeGP(p,l.volume),0);
+    const pwgp=pl.filter(l=>l.stage!=='closed-lost').reduce((s,l)=>{const g=computeGP(p,l.volume);return s+(l.stage==='closed-won'?g:g*(Number(l.prob)/100));},0);
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td><span class="prod-badge" style="${PS[p]}">${p}</span></td><td>${pl.length}</td><td class="gp-cell">${pl.length?fmt(pgp):'—'}</td><td class="gp-cell">${pl.length?fmt(pwgp):'—'}</td>`;
+    tb.appendChild(tr);
+  });
+
+  const r2=mk('div','a-row three');
+  const winP=mk('div','panel'); winP.innerHTML='<h2>Win Rate</h2>';
+  const radius=40,circ=2*Math.PI*radius,wonDash=winRate/100*circ,rw=mk('div','ring-wrap');
+  rw.innerHTML=`<svg width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="${radius}" fill="none" stroke="#22223a" stroke-width="11"/><circle cx="50" cy="50" r="${radius}" fill="none" stroke="#4caf82" stroke-width="11" stroke-dasharray="${wonDash} ${circ}" stroke-dashoffset="${circ*0.25}" stroke-linecap="round"/><text x="50" y="47" text-anchor="middle" fill="#4caf82" font-size="17" font-weight="700" font-family="sans-serif">${winRate}%</text><text x="50" y="61" text-anchor="middle" fill="#525270" font-size="9" font-family="sans-serif">win rate</text></svg><div class="ring-legend"><div class="ring-item"><div class="ring-dot" style="background:#4caf82"></div><span>${won.length} won · ${fmt(wonGP)}</span></div><div class="ring-item"><div class="ring-dot" style="background:#ff4f6a"></div><span>${lost.length} lost</span></div><div class="ring-item"><div class="ring-dot" style="background:#00c4ff"></div><span>${open.length} open</span></div></div>`;
+  winP.appendChild(rw); r2.appendChild(winP);
+
+  const probP=mk('div','panel'); probP.innerHTML='<h2>Probability Distribution</h2>';
+  const pg=mk('div','prob-grid'),buckets=[10,20,30,40,50,60,70,80,90,100],counts=buckets.map(b=>open.filter(l=>Number(l.prob)===b).length),maxP=Math.max(...counts,1);
+  buckets.forEach((b,i)=>{const cnt=counts[i],h=Math.max(cnt/maxP*68,cnt>0?3:0),col=mk('div','prob-col'),color=b<=30?'#ff4f6a':b<=60?'#ff9f4a':'#4caf82';col.innerHTML=`${cnt>0?`<span style="font-size:9px;color:var(--faint)">${cnt}</span>`:''}<div class="prob-bar-inner" style="height:${h}px;background:${color}"></div><div class="prob-tick">${b}%</div>`;pg.appendChild(col);});
+  probP.appendChild(pg); r2.appendChild(probP);
+
+  const priP=mk('div','panel'); priP.innerHTML='<h2>Pipeline by Priority</h2>';
+  const pris=[{key:'high',label:'High',color:'#ff7088'},{key:'medium',label:'Medium',color:'#ffb86c'},{key:'low',label:'Low',color:'#6ecfa0'}];
+  const maxPG=Math.max(...pris.map(p=>open.filter(l=>l.priority===p.key).reduce((s,l)=>s+computeGP(l.product,l.volume),0)),1);
+  pris.forEach(p=>{const pl=open.filter(l=>l.priority===p.key),pgp=pl.reduce((s,l)=>s+computeGP(l.product,l.volume),0),w=pct(pgp,maxPG),row=mk('div','bar-row');row.innerHTML=`<div class="bar-label">${p.label} (${pl.length})</div><div class="bar-track"><div class="bar-fill" style="width:${w}%;background:${p.color}"></div></div><div class="bar-val">${fmt(pgp)}</div>`;priP.appendChild(row);});
+  r2.appendChild(priP); c.appendChild(r2);
+
+  const r3=mk('div','a-row');
+  const gpP=mk('div','panel'); gpP.innerHTML='<h2>Open GP by Product</h2>';
+  const maxProd=Math.max(...Object.keys(PRODUCTS).map(p=>open.filter(l=>l.product===p).reduce((s,l)=>s+computeGP(p,l.volume),0)),1);
+  Object.entries(PRODUCTS).forEach(([name,conf])=>{const pl=open.filter(l=>l.product===name),pgp=pl.reduce((s,l)=>s+computeGP(name,l.volume),0),w=pct(pgp,maxProd),row=mk('div','bar-row');row.innerHTML=`<div class="bar-label">${name} (${pl.length})</div><div class="bar-track"><div class="bar-fill" style="width:${w}%;background:${conf.color}"></div></div><div class="bar-val">${fmt(pgp)}</div>`;gpP.appendChild(row);});
+  r3.appendChild(gpP);
+  const actP=mk('div','panel'); actP.innerHTML='<h2>Recent Leads</h2>';
+  const al=mk('div','act-list');
+  [...leads].sort((a,b)=>b.createdAt-a.createdAt).slice(0,8).forEach(l=>{const stage=STAGES.find(s=>s.id===l.stage)||{},gp=computeGP(l.product,l.volume),item=mk('div','act-item');item.innerHTML=`<div class="act-dot" style="background:${stage.color||'#7b5cff'}"></div><div class="act-text"><strong>${esc(l.company)}</strong><span> · ${l.product} · ${fmt(gp)} GP · ${stage.label||''}</span></div><div class="act-date">${daysSince(l.createdAt)}</div>`;al.appendChild(item);});
+  actP.appendChild(al); r3.appendChild(actP); c.appendChild(r3);
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();document.getElementById('mini-backdrop').classList.remove('open');}});
+updateActionsBadge();
+renderBoard();
+</script>
+</body>
+</html>
